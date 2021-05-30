@@ -6,6 +6,31 @@
 
 #define MAX_LOADSTRING 100
 
+#define TAMSERP 20
+
+#define CUERPO  1
+#define CABEZA  2
+#define COLA    3
+
+#define IZQ     1
+#define DER     2
+#define ARRIBA  3
+#define ABAJO   4
+
+struct pos {
+    int x;
+    int y;
+}; typedef struct pos POS;
+
+struct PedacitoS {
+    POS pos;
+    int tipo;
+    int dir;
+}; typedef struct PedacitoS PEDACITOS;
+
+PEDACITOS* NuevaSerpiente(int);
+void DibujarSerpiente(HDC, const PEDACITOS*, RECT);
+
 // Variables globales:
 HINSTANCE hInst;                                // instancia actual
 WCHAR szTitle[MAX_LOADSTRING];                  // Texto de la barra de título
@@ -123,8 +148,20 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    PAINTSTRUCT ps;
+    HDC hdc;
+    RECT rect{};
+    static PEDACITOS* serpiente = NULL;
+    static int tams = 5;
+
     switch (message)
     {
+    case WM_CREATE:
+        {
+        serpiente = NuevaSerpiente(tams);
+        
+        }
+        break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -144,9 +181,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_PAINT:
         {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
+            hdc = BeginPaint(hWnd, &ps);
             // TODO: Agregar cualquier código de dibujo que use hDC aquí...
+
+            DibujarSerpiente(hdc, serpiente, rect);
+
             EndPaint(hWnd, &ps);
         }
         break;
@@ -177,4 +216,150 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+
+
+PEDACITOS * NuevaSerpiente(int tams) {
+    PEDACITOS* serpiente = NULL;
+    int i;
+
+    if (tams < 2)
+        tams = 2;
+    serpiente = (PEDACITOS*)malloc(sizeof(PEDACITOS) * tams);
+    if (serpiente == NULL) {
+        MessageBox(NULL, L"Sin memoria", L"Error", MB_OK | MB_ICONERROR);
+        exit(0);
+    }
+    serpiente[0].tipo = COLA;
+    serpiente[0].pos.x = 1;
+    serpiente[0].pos.y = 1;
+    serpiente[0].dir = DER;
+    for (i = 1; i < tams - 1; i++) {
+        serpiente[i].tipo = CUERPO;
+        serpiente[i].pos.x = i + 1;
+        serpiente[i].pos.y = 1;
+        serpiente[i].dir = DER;
+    }
+    serpiente[i].tipo = CABEZA;
+    serpiente[i].pos.x = tams;
+    serpiente[i].pos.y = 1;
+    serpiente[i].dir = DER;
+
+    return serpiente;
+}
+
+void DibujarSerpiente(HDC hdc, const PEDACITOS* serpiente, RECT rect) {
+    int i = 1;
+    switch (serpiente[0].dir)
+    {
+    case DER:
+        MoveToEx(hdc, serpiente[0].pos.x * TAMSERP + TAMSERP, 
+                      serpiente[0].pos.y * TAMSERP, NULL);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP,
+                    serpiente[0].pos.y * TAMSERP + TAMSERP / 2);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP + TAMSERP,
+                    serpiente[0].pos.y * TAMSERP + TAMSERP);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP + TAMSERP,
+                    serpiente[0].pos.y * TAMSERP);
+        break;
+    case IZQ:
+        MoveToEx(hdc, serpiente[0].pos.x * TAMSERP,
+                      serpiente[0].pos.y * TAMSERP, NULL);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP + TAMSERP,
+                    serpiente[0].pos.y * TAMSERP + TAMSERP / 2);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP,
+                    serpiente[0].pos.y * TAMSERP + TAMSERP);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP,
+                    serpiente[0].pos.y * TAMSERP);
+        break;
+    case ARRIBA:
+        MoveToEx(hdc, serpiente[0].pos.x * TAMSERP,
+                      serpiente[0].pos.y * TAMSERP, NULL);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP + TAMSERP / 2,
+                    serpiente[0].pos.y * TAMSERP + TAMSERP);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP + TAMSERP,
+                    serpiente[0].pos.y * TAMSERP);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP,
+                    serpiente[0].pos.y * TAMSERP);
+        break;
+    case ABAJO:
+        MoveToEx(hdc, serpiente[0].pos.x * TAMSERP,
+                      serpiente[0].pos.y * TAMSERP + TAMSERP, NULL);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP + TAMSERP / 2,
+                    serpiente[0].pos.y * TAMSERP);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP + TAMSERP,
+                    serpiente[0].pos.y * TAMSERP + TAMSERP);
+        LineTo(hdc, serpiente[0].pos.x * TAMSERP,
+                    serpiente[0].pos.y * TAMSERP + TAMSERP);
+        break;
+    default:
+        break;
+    }
+    while (serpiente[i].tipo != CABEZA) {
+        RoundRect(hdc, serpiente[i].pos.x * TAMSERP,
+            serpiente[i].pos.y * TAMSERP,
+            serpiente[i].pos.x * TAMSERP + TAMSERP,
+            serpiente[i].pos.y * TAMSERP + TAMSERP,
+            5, 5);
+        i++;
+    }
+    RoundRect(hdc, serpiente[i].pos.x * TAMSERP,
+        serpiente[i].pos.y * TAMSERP,
+        serpiente[i].pos.x * TAMSERP + TAMSERP,
+        serpiente[i].pos.y * TAMSERP + TAMSERP,
+        5, 5);
+
+    switch (serpiente[i].dir)
+    {
+    case DER:
+        Ellipse(hdc, serpiente[i].pos.x * TAMSERP,
+            serpiente[i].pos.y * TAMSERP,
+            serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.y * TAMSERP + TAMSERP / 2
+            );
+        Ellipse(hdc, serpiente[i].pos.x * TAMSERP,
+            serpiente[i].pos.y * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.y * TAMSERP + TAMSERP
+        );
+        break;
+    case IZQ:
+        Ellipse(hdc, serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.y * TAMSERP,
+            serpiente[i].pos.x * TAMSERP + TAMSERP,
+            serpiente[i].pos.y * TAMSERP + TAMSERP / 2
+        );
+        Ellipse(hdc, serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.y * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.x * TAMSERP + TAMSERP,
+            serpiente[i].pos.y * TAMSERP + TAMSERP
+        );
+        break;
+    case ARRIBA:
+        Ellipse(hdc, serpiente[i].pos.x * TAMSERP,
+            serpiente[i].pos.y * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.y * TAMSERP + TAMSERP 
+        );
+        Ellipse(hdc, serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.y * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.x * TAMSERP + TAMSERP,
+            serpiente[i].pos.y * TAMSERP + TAMSERP
+        );
+        break;
+    case ABAJO:
+        Ellipse(hdc, serpiente[i].pos.x * TAMSERP,
+            serpiente[i].pos.y * TAMSERP,
+            serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.y * TAMSERP + TAMSERP / 2
+        );
+        Ellipse(hdc, serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
+            serpiente[i].pos.y * TAMSERP, 
+            serpiente[i].pos.x * TAMSERP + TAMSERP,
+            serpiente[i].pos.y * TAMSERP + TAMSERP / 2
+        );
+        break;
+    default:
+        break;
+    }
 }

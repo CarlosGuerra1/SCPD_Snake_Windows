@@ -45,8 +45,8 @@ PEDACITOS* NuevaSerpiente(int);
 void DibujarSerpiente(HDC, const PEDACITOS*);
 int MoverSerpiente(PEDACITOS*, int, RECT, int);
 PEDACITOS* AjustarSerpiente(PEDACITOS*, int *, int, RECT);
-int Colisionar(PEDACITOS*, int);
-int Comer(PEDACITOS *, int);
+int Colisionar(const PEDACITOS*, int);
+int Comer(const PEDACITOS *, int);
 
 // Variables globales:
 HINSTANCE hInst;                                // instancia actual
@@ -262,6 +262,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // Analizar las selecciones de menú:
             switch (wmId)
             {
+            case IDM_NUEVO: {
+                if (serpiente != NULL) {
+                    KillTimer(hWnd, IDT_TIMER1);
+                    free(serpiente);
+                    tams = 5;
+                    cuenta = 0;
+                    serpiente = NuevaSerpiente(tams);
+                    SetTimer(hWnd, IDT_TIMER1, 500, NULL);
+                    InvalidateRect(hWnd, NULL, TRUE);
+                }
+                break;
+            }   
+                
+
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
@@ -297,6 +311,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_DESTROY:
+        free(serpiente);
         PostQuitMessage(0);
         break;
     default:
@@ -532,7 +547,7 @@ int MoverSerpiente(PEDACITOS* serpiente, int dir, RECT rect, int tams) {
     else { return 1; }
 }
 
-int Colisionar(PEDACITOS* serpiente, int tams) {
+int Colisionar(const PEDACITOS* serpiente, int tams) {
     int i = 0;
     while (serpiente[i].tipo != CABEZA) {
         if (serpiente[i].pos.x == serpiente[tams - 1].pos.x &&
@@ -604,7 +619,7 @@ PEDACITOS* AjustarSerpiente(PEDACITOS *serpiente, int *tams, int comida, RECT re
     return serpiente;
 }
 
-int Comer(PEDACITOS* serpiente, int tams) {
+int Comer(const PEDACITOS* serpiente, int tams) {
     if (serpiente[tams - 1].pos.x == com.pos.x &&
         serpiente[tams - 1].pos.y == com.pos.y) {
         return 1;

@@ -17,6 +17,10 @@
 #define ARRIBA  3
 #define ABAJO   4
 
+#define CRECE   1
+#define ACHICA  2
+#define NADA    3
+
 #define IDT_TIMER1  1
 
 struct pos {
@@ -30,10 +34,19 @@ struct PedacitoS {
     int dir;
 }; typedef struct PedacitoS PEDACITOS;
 
+struct Comida {
+    POS pos;
+    int tipo;
+}; typedef struct Comida COMIDA;
+
+COMIDA com = { {0,0}, NADA };
+
 PEDACITOS* NuevaSerpiente(int);
 void DibujarSerpiente(HDC, const PEDACITOS*);
 int MoverSerpiente(PEDACITOS*, int, RECT, int);
+PEDACITOS* AjustarSerpiente(PEDACITOS*, int *, int, RECT);
 int Colisionar(PEDACITOS*, int);
+int Comer(PEDACITOS *, int);
 
 // Variables globales:
 HINSTANCE hInst;                                // instancia actual
@@ -157,6 +170,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     RECT rect{};
     static PEDACITOS* serpiente = NULL;
     static int tams = 5;
+    static int cuenta = 0; 
 
     switch (message)
     {
@@ -176,7 +190,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 KillTimer(hWnd, IDT_TIMER1);
                 MessageBox(hWnd, L"Ya se murió", L"Fin del juego", MB_OK | MB_ICONINFORMATION);
             }
+            cuenta++;
+            if (cuenta == 15) {
+                if (rand() % 100 < 80) {
+                    com.tipo = CRECE;
+                } else {
+                    com.tipo = ACHICA;
+                }
+                com.pos.x = rand() % rect.right/TAMSERP;
+                com.pos.y = rand() % rect.bottom / TAMSERP;
+                cuenta = 0;
+            }
+            if (Comer(serpiente, tams)) {
+                serpiente = AjustarSerpiente(serpiente, &tams, com.tipo, rect);
+            }
             InvalidateRect(hWnd, NULL, TRUE);
+            break;
         }
         default:
             break;
@@ -250,6 +279,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // TODO: Agregar cualquier código de dibujo que use hDC aquí...
 
             DibujarSerpiente(hdc, serpiente);
+            if (com.tipo == CRECE) {
+                RoundRect(hdc, com.pos.x * TAMSERP,
+                    com.pos.y * TAMSERP,
+                    com.pos.x * TAMSERP + TAMSERP,
+                    com.pos.y * TAMSERP + TAMSERP,
+                    7, 7);
+            }
+            else if (com.tipo == ACHICA) {
+                Ellipse(hdc, com.pos.x* TAMSERP,
+                    com.pos.y* TAMSERP,
+                    com.pos.x* TAMSERP + TAMSERP,
+                    com.pos.y* TAMSERP + TAMSERP);
+            }
 
             EndPaint(hWnd, &ps);
         }
@@ -498,6 +540,74 @@ int Colisionar(PEDACITOS* serpiente, int tams) {
             return 1;
         }
         i++;
+    }
+    return 0;
+}
+
+PEDACITOS* AjustarSerpiente(PEDACITOS *serpiente, int *tams, int comida, RECT rect) {
+    int i;
+    PEDACITOS cabeza = serpiente[*tams-1];
+    switch (comida)
+    {
+    case CRECE: {
+        (*tams)++;
+        serpiente = (PEDACITOS*) realloc(serpiente, sizeof(PEDACITOS) * (*tams));
+        serpiente[*tams - 2].tipo = CUERPO;
+        //serpiente[*tams - 1].tipo = CABEZA;
+        serpiente[*tams - 1] = cabeza;
+        i = *tams - 1;
+        switch (serpiente[i].dir)
+        {
+
+        case DER:
+            serpiente[i].pos.x = serpiente[i].pos.x + 1;
+            if (serpiente[i].pos.x >= rect.right / TAMSERP)
+                serpiente[i].pos.x = 0;
+            break;
+        case IZQ:
+            serpiente[i].pos.x = serpiente[i].pos.x - 1;
+            if (serpiente[i].pos.x < 0)
+                serpiente[i].pos.x = rect.right / TAMSERP;
+            break;
+        case ARRIBA:
+            serpiente[i].pos.y = serpiente[i].pos.y - 1;
+            if (serpiente[i].pos.y < 0)
+                serpiente[i].pos.y = rect.bottom / TAMSERP;
+            break;
+        case ABAJO:
+            serpiente[i].pos.y = serpiente[i].pos.y + 1;
+            if (serpiente[i].pos.y >= rect.bottom / TAMSERP)
+                serpiente[i].pos.y = 0;
+            break;
+        default:
+            break;
+        }
+
+        break;
+    }
+    case ACHICA:{
+        if (*tams > 2) {
+            i = 0;
+            while (serpiente[i].tipo != CABEZA) {
+                serpiente[i] = serpiente[i + 1];
+                i++;
+            }
+            (*tams)--;
+            serpiente = (PEDACITOS*)realloc(serpiente, sizeof(PEDACITOS) * (*tams));
+            serpiente[*tams - 1] = cabeza;
+
+        }
+    } 
+    default:
+        break;
+    }
+    return serpiente;
+}
+
+int Comer(PEDACITOS* serpiente, int tams) {
+    if (serpiente[tams - 1].pos.x == com.pos.x &&
+        serpiente[tams - 1].pos.y == com.pos.y) {
+        return 1;
     }
     return 0;
 }

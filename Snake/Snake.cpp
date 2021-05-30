@@ -17,6 +17,8 @@
 #define ARRIBA  3
 #define ABAJO   4
 
+#define IDT_TIMER1  1
+
 struct pos {
     int x;
     int y;
@@ -30,7 +32,8 @@ struct PedacitoS {
 
 PEDACITOS* NuevaSerpiente(int);
 void DibujarSerpiente(HDC, const PEDACITOS*);
-int MoverSerpiente(PEDACITOS*, int, RECT);
+int MoverSerpiente(PEDACITOS*, int, RECT, int);
+int Colisionar(PEDACITOS*, int);
 
 // Variables globales:
 HINSTANCE hInst;                                // instancia actual
@@ -160,31 +163,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         {
         serpiente = NuevaSerpiente(tams);
-        
+        SetTimer(hWnd, IDT_TIMER1, 500, NULL);
         }
         break;
+
+    case WM_TIMER: {
+        switch (wParam)
+        {
+        case IDT_TIMER1: {
+            GetClientRect(hWnd, &rect);
+            if (!MoverSerpiente(serpiente, serpiente[tams - 1].dir, rect, tams)) {
+                KillTimer(hWnd, IDT_TIMER1);
+                MessageBox(hWnd, L"Ya se murió", L"Fin del juego", MB_OK | MB_ICONINFORMATION);
+            }
+            InvalidateRect(hWnd, NULL, TRUE);
+        }
+        default:
+            break;
+        }
+    }
 
     case WM_KEYDOWN:{
         GetClientRect(hWnd, &rect);
         switch (wParam)
         {
         case VK_UP: {
-            MoverSerpiente(serpiente, ARRIBA, rect);
+            
+            if (!MoverSerpiente(serpiente, ARRIBA, rect, tams)) {
+                KillTimer(hWnd, IDT_TIMER1);
+                MessageBox(hWnd, L"Ya se murió", L"Fin del juego", MB_OK | MB_ICONINFORMATION);
+            }
             InvalidateRect(hWnd, NULL, TRUE);
             break;
         }
         case VK_DOWN: {
-            MoverSerpiente(serpiente, ABAJO, rect);
+            
+            if (!MoverSerpiente(serpiente, ABAJO, rect, tams)) {
+                KillTimer(hWnd, IDT_TIMER1);
+                MessageBox(hWnd, L"Ya se murió", L"Fin del juego", MB_OK | MB_ICONINFORMATION);
+            }
             InvalidateRect(hWnd, NULL, TRUE);
             break;
         }
         case VK_LEFT: {
-            MoverSerpiente(serpiente, IZQ, rect);
+            if (!MoverSerpiente(serpiente, IZQ, rect, tams)) {
+                KillTimer(hWnd, IDT_TIMER1);
+                MessageBox(hWnd, L"Ya se murió", L"Fin del juego", MB_OK | MB_ICONINFORMATION);
+            }
             InvalidateRect(hWnd, NULL, TRUE);
             break;
-        }
+        } 
         case VK_RIGHT: {
-            MoverSerpiente(serpiente, DER, rect);
+            if (!MoverSerpiente(serpiente, DER, rect, tams)) {
+                KillTimer(hWnd, IDT_TIMER1);
+                MessageBox(hWnd, L"Ya se murió", L"Fin del juego", MB_OK | MB_ICONINFORMATION);
+            }
             InvalidateRect(hWnd, NULL, TRUE);
             break;
         }
@@ -359,19 +392,19 @@ void DibujarSerpiente(HDC hdc, const PEDACITOS* serpiente) {
         Ellipse(hdc, serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
             serpiente[i].pos.y * TAMSERP,
             serpiente[i].pos.x * TAMSERP + TAMSERP,
-            serpiente[i].pos.y * TAMSERP + TAMSERP / 2
-        );
-        Ellipse(hdc, serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
-            serpiente[i].pos.y * TAMSERP + TAMSERP / 2,
-            serpiente[i].pos.x * TAMSERP + TAMSERP,
-            serpiente[i].pos.y * TAMSERP + TAMSERP
-        );
-        break;
+serpiente[i].pos.y* TAMSERP + TAMSERP / 2
+);
+Ellipse(hdc, serpiente[i].pos.x* TAMSERP + TAMSERP / 2,
+    serpiente[i].pos.y* TAMSERP + TAMSERP / 2,
+    serpiente[i].pos.x* TAMSERP + TAMSERP,
+    serpiente[i].pos.y* TAMSERP + TAMSERP
+);
+break;
     case ARRIBA:
         Ellipse(hdc, serpiente[i].pos.x * TAMSERP,
             serpiente[i].pos.y * TAMSERP + TAMSERP / 2,
             serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
-            serpiente[i].pos.y * TAMSERP + TAMSERP 
+            serpiente[i].pos.y * TAMSERP + TAMSERP
         );
         Ellipse(hdc, serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
             serpiente[i].pos.y * TAMSERP + TAMSERP / 2,
@@ -386,7 +419,7 @@ void DibujarSerpiente(HDC hdc, const PEDACITOS* serpiente) {
             serpiente[i].pos.y * TAMSERP + TAMSERP / 2
         );
         Ellipse(hdc, serpiente[i].pos.x * TAMSERP + TAMSERP / 2,
-            serpiente[i].pos.y * TAMSERP, 
+            serpiente[i].pos.y * TAMSERP,
             serpiente[i].pos.x * TAMSERP + TAMSERP,
             serpiente[i].pos.y * TAMSERP + TAMSERP / 2
         );
@@ -396,7 +429,7 @@ void DibujarSerpiente(HDC hdc, const PEDACITOS* serpiente) {
     }
 }
 
-int MoverSerpiente(PEDACITOS* serpiente, int dir, RECT rect) {
+int MoverSerpiente(PEDACITOS* serpiente, int dir, RECT rect, int tams) {
     int i = 0;
     while (serpiente[i].tipo != CABEZA) {
         serpiente[i].dir = serpiente[i + 1].dir;
@@ -430,12 +463,12 @@ int MoverSerpiente(PEDACITOS* serpiente, int dir, RECT rect) {
     switch (serpiente[i].dir)
     {
 
-    case DER:        
+    case DER:
         serpiente[i].pos.x = serpiente[i].pos.x + 1;
         if (serpiente[i].pos.x >= rect.right / TAMSERP)
             serpiente[i].pos.x = 0;
         break;
-    case IZQ:   
+    case IZQ:
         serpiente[i].pos.x = serpiente[i].pos.x - 1;
         if (serpiente[i].pos.x < 0)
             serpiente[i].pos.x = rect.right / TAMSERP;
@@ -449,9 +482,22 @@ int MoverSerpiente(PEDACITOS* serpiente, int dir, RECT rect) {
         serpiente[i].pos.y = serpiente[i].pos.y + 1;
         if (serpiente[i].pos.y >= rect.bottom / TAMSERP)
             serpiente[i].pos.y = 0;
-        break;
+        break; 
     default:
         break;
     }
-    return 1;
+    if (Colisionar(serpiente, tams)) { return 0; }
+    else { return 1; }
+}
+
+int Colisionar(PEDACITOS* serpiente, int tams) {
+    int i = 0;
+    while (serpiente[i].tipo != CABEZA) {
+        if (serpiente[i].pos.x == serpiente[tams - 1].pos.x &&
+            serpiente[i].pos.y == serpiente[tams - 1].pos.y){
+            return 1;
+        }
+        i++;
+    }
+    return 0;
 }
